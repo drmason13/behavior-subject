@@ -1,0 +1,16 @@
+{
+    "name": "behavior-subject",
+    "version": "0.1.0",
+    "description": "",
+    "main": "src/demo.js",
+    "type": "module",
+    "scripts": {
+        "run": "node src/demo.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "luxon": "^3.2.1",
+        "rxjs": "^7.8.0"
+    }
+}
