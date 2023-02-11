@@ -7,25 +7,18 @@ import { stdin as input, stdout as output } from 'node:process';
 const sqlFormat = 'yyyy-MM-dd HH:mm:ss';
 
 
-const makeDashboard = () => {
-    const now = DateTime.fromFormat("2022-01-01 09:00:00", sqlFormat);
+function Dashboard(datetime) {
+    this.start = datetime.minus(Duration.fromObject({ minutes: 30 }));
+    this.end = datetime.plus(Duration.fromObject({ minutes: 30 }));
 
-    const start = now.minus(Duration.fromObject({ minutes: 30 }));
-    const end = now.plus(Duration.fromObject({ minutes: 30 }));
-
-    return {
-        start,
-        end,
-
-        dateRange$: new BehaviorSubject({ start, end }),
-
-        broadcastDateRange(start, end) {
-            this.dateRange$.next({ start, end });
-        },
-    }
+    this.dateRange$ = new BehaviorSubject({ start: this.start, end: this.end });
 }
 
-let dashboard = makeDashboard();
+Dashboard.prototype.broadcastDateRange = function (start, end) {
+    this.dateRange$.next({ start, end });
+}
+
+let dashboard = new Dashboard(DateTime.fromFormat("2022-01-01 09:00:00", sqlFormat));
 
 const dashboardProxy = new Proxy(dashboard, {
     set(obj, prop, value) {
