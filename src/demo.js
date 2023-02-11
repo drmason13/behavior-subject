@@ -6,41 +6,42 @@ import { stdin as input, stdout as output } from 'node:process';
 
 const sqlFormat = 'yyyy-MM-dd HH:mm:ss';
 
+class Dashboard {
+    constructor(datetime) {
+        this.start = datetime.minus(Duration.fromObject({ minutes: 30 }));
+        this.end = datetime.plus(Duration.fromObject({ minutes: 30 }));
 
-function Dashboard(datetime) {
-    this.start = datetime.minus(Duration.fromObject({ minutes: 30 }));
-    this.end = datetime.plus(Duration.fromObject({ minutes: 30 }));
+        this.dateRange$ = new BehaviorSubject({ start: this.start, end: this.end });
 
-    this.dateRange$ = new BehaviorSubject({ start: this.start, end: this.end });
-}
+        return new Proxy(this, {
+            set(obj, prop, value) {
+                if (prop === 'start' || prop === 'end') {
 
-Dashboard.prototype.broadcastDateRange = function (start, end) {
-    this.dateRange$.next({ start, end });
+                    const datetime = DateTime.fromFormat(value, sqlFormat);
+
+                    if (!datetime.isValid) {
+                        console.error(`Invalid DateTime ${value}: ${datetime.invalid.explanation}`);
+                        return obj[prop];
+                    }
+
+                    // this sets the value for us
+                    const result = Reflect.set(obj, prop, datetime);
+
+                    // this brodcasts the new value to all observers
+                    obj.broadcastDateRange(obj.start, obj.end);
+
+                    return result
+                }
+            }
+        })
+    }
+
+    broadcastDateRange(start, end) {
+        this.dateRange$.next({ start, end });
+    }
 }
 
 let dashboard = new Dashboard(DateTime.fromFormat("2022-01-01 09:00:00", sqlFormat));
-
-const dashboardProxy = new Proxy(dashboard, {
-    set(obj, prop, value) {
-        if (prop === 'start' || prop === 'end') {
-
-            const datetime = DateTime.fromFormat(value, sqlFormat);
-
-            if (!datetime.isValid) {
-                console.error(`Invalid DateTime ${value}: ${datetime.invalid.explanation}`);
-                return obj[prop];
-            }
-
-            // this sets the value for us
-            const result = Reflect.set(obj, prop, datetime);
-
-            // this brodcasts the new value to all observers
-            obj.broadcastDateRange(obj.start, obj.end);
-
-            return result
-        }
-    }
-})
 
 dashboard.dateRange$.subscribe(dateRange => {
     console.log("Subscription got: start =", dateRange.start.toFormat(sqlFormat) + ",", "end =", dateRange.end.toFormat(sqlFormat));
@@ -49,10 +50,10 @@ dashboard.dateRange$.subscribe(dateRange => {
 const rl = readline.createInterface({ input, output });
 
 let answer = await rl.question('When to start from? ');
-dashboardProxy.start = answer;
+dashboard.start = answer;
 
 answer = await rl.question('When to end? ');
-dashboardProxy.end = answer;
+dashboard.end = answer;
 
 rl.close();
 
